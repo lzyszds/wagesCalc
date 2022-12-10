@@ -42,7 +42,9 @@ const submitForm = (formEl: FormInstance | undefined) => {
     if (valid) {
       if (ruleForm.username === 'admin' && ruleForm.password === '123456') {
         localStorage.setItem('_token', 'todayIsAGoodDay')
-        router.push('/home')
+        setTimeout(() => {
+          router.push('/home')
+        }, 2000)
       } else {
         ElMessage.error('账号密码错误，请重新输入')
       }
@@ -50,9 +52,6 @@ const submitForm = (formEl: FormInstance | undefined) => {
       console.log('error submit!', fields)
     }
   })
-}
-const back = () => {
-  router.push('/')
 }
 </script>   
 

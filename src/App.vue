@@ -8,6 +8,7 @@ if (token === 'todayIsAGoodDay') {
 } else {
   router.push('/')
 }
+
 </script>
 
 <template>
