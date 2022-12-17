@@ -81,26 +81,24 @@
         </el-table-column>
         <el-table-column label="出勤天数" width="120">
           <template #default="scope">
-            <input class="update" type="text" v-model="infoState[scope.$index].workingDays">
+            <input class="update" type="text" v-model.number="infoState[scope.$index].workingDays">
           </template>
         </el-table-column>
         <el-table-column label="绩效分" width="120">
           <template #default="scope">
-            <input class="update" type="text" v-model="infoState[scope.$index].performPoints">
+            <input class="update" type="text" v-model.number="infoState[scope.$index].performPoints">
           </template>
         </el-table-column>
         <el-table-column label="加班天数" width="120">
           <template #default="scope">
-            <input class="update" type="text" v-model="infoState[scope.$index].daysWorkOvertime">
+            <input class="update" type="text" v-model.number="infoState[scope.$index].daysWorkOvertime">
           </template>
         </el-table-column>
-        <el-table-column label="计件数" width="120">
+        <el-table-column label="奖金工资" width="120">
           <template #default="scope">
-            <input class="update" type="text" v-model="infoState[scope.$index].piece">
+            <input class="update" type="text" v-model.number="infoState[scope.$index].piece">
           </template>
         </el-table-column>
-
-
 
         <el-table-column label="Operations">
           <template #default="scope">
@@ -125,7 +123,7 @@
         <el-table-column prop="allowance" label="生活津贴" />
         <el-table-column prop="pre" label="绩效工资" />
         <el-table-column prop="daysWorkOvertime" label="加班工资" />
-        <el-table-column prop="piece" label="计件工资" />
+        <el-table-column prop="piece" label="奖金工资" />
         <el-table-column prop="sums" label="总工资" />
       </el-table>
     </div>
@@ -199,7 +197,7 @@ interface tableDataType {
   pre: number, //绩效工资
   lengthOfService: number, //岗位级别工资
   daysWorkOvertime: number, //加班工资
-  piece: number, //计件数
+  piece: number, //奖金
   sums: number, //总工资
 }
 //定义员工信息状态 类型接口
@@ -211,7 +209,7 @@ interface infoStateType {
   daysWorkOvertime: number, //加班天数
   position: string, //岗位
   lengthOfService: string,  //岗位级别
-  piece: number,  //计件数
+  piece: number,  //奖金
 }
 //定义员工工资条
 const tableData = ref<tableDataType[]>([])
@@ -263,7 +261,7 @@ const growthFn = () => {
 const onCalc = () => {
   tableData.value = []
   infoState.value.forEach((res, index) => {
-    let posipie = null // 定义岗位工资增长率变量
+    let posipie = 0 // 定义岗位工资增长率变量
     //将员工信息添加到工资条中
     tableData.value.push({
       name: res.name,
@@ -306,36 +304,60 @@ const onCalc = () => {
         posipie = form.jobsOrdinary.growth
         break;
     }
-    //计算岗位工资  月岗位工资标准÷全勤天数×出勤天数=实发工资  出勤天数大于全勤天数时，按全勤天数计发
-    tableData.value[index].workingDays = toFixed(
-      (tableData.value[index].positionPie / form.fullTime) *
-      (res.workingDays > form.fullTime ? form.fullTime : res.workingDays)
-    )
+    //计算岗位工资 
+    tableData.value[index].workingDays = workingDaysFn(res, index)
     //计算岗位级别工资
-    tableData.value[index].lengthOfService = (Number(res.lengthOfService.split('级')[0]) - 1) * posipie!
-    //生活补贴工资 月生活津贴标准÷全勤天数×出勤天数=实发工资  出勤天数大于全勤天数时，按全勤天数计发
-    tableData.value[index].allowance = toFixed(
-      (form.allowance / form.fullTime) *
-      (res.workingDays > form.fullTime ? form.fullTime : res.workingDays)
-    )
-    /* 计算绩效工资 
+    tableData.value[index].lengthOfService = lengthOfServiceFn(res, posipie)
+    //生活补贴工资 
+    tableData.value[index].allowance = allowanceFn(res)
+    //计算绩效工资 
+    tableData.value[index].pre = preFn(res)
+    //计算加班工资 
+    tableData.value[index].daysWorkOvertime = daysWorkOvertimeFn(res)
+    //计算总工资 
+    tableData.value[index].sums = sumsFn(index)
+  })
+}
+function workingDaysFn(res: infoStateType, index: number) {
+  //计算岗位工资  月岗位工资标准÷全勤天数×出勤天数=实发工资  出勤天数大于全勤天数时，按全勤天数计发
+  return toFixed(
+    (tableData.value[index].positionPie / form.fullTime) *
+    (res.workingDays > form.fullTime ? form.fullTime : res.workingDays)
+  )
+}
+function lengthOfServiceFn(res: infoStateType, posipie: number) {
+  //计算岗位级别工资  
+  return (Number(res.lengthOfService.split('级')[0]) - 1) * posipie!
+}
+function allowanceFn(res: infoStateType) {
+  //生活补贴工资 月生活津贴标准÷全勤天数×出勤天数=实发工资  出勤天数大于全勤天数时，按全勤天数计发
+  return toFixed(
+    (form.allowance / form.fullTime) *
+    (res.workingDays > form.fullTime ? form.fullTime : res.workingDays)
+  )
+}
+function preFn(res: infoStateType) {
+  /* 计算绩效工资
       实际得分90分以上（含90分）全额计发绩效工资
       实际得分90分以下，按实际得分数的%计发绩效工资。
     */
-    tableData.value[index].pre = res.performPoints >= 90 ? form.pre : toFixed((res.performPoints / 100) * form.pre)
-    //计算加班工资 月基本工资标准÷全勤天数×加班天数=实发工资
-    tableData.value[index].daysWorkOvertime = toFixed((form.basic / form.fullTime) * res.daysWorkOvertime)
-    //计算总工资 基本工资+岗位工资+生活补贴工资+绩效工资+岗位级别工资+加班工资+计件工资
-    tableData.value[index].sums = toFixed(
-      tableData.value[index].basic +
-      tableData.value[index].workingDays +
-      tableData.value[index].allowance +
-      tableData.value[index].pre +
-      tableData.value[index].lengthOfService +
-      tableData.value[index].daysWorkOvertime +
-      tableData.value[index].piece
-    )
-  })
+  return res.performPoints >= 90 ? form.pre : toFixed((res.performPoints / 100) * form.pre)
+}
+function daysWorkOvertimeFn(res: infoStateType) {
+  //计算加班工资 月基本工资标准÷全勤天数×加班天数 = 实发工资
+  return toFixed((form.basic / form.fullTime) * res.daysWorkOvertime)
+}
+function sumsFn(index: number) {
+  // 计算总工资 基本工资+岗位工资+生活补贴工资+绩效工资+岗位级别工资+加班工资+奖金工资
+  return toFixed(
+    tableData.value[index].basic +
+    tableData.value[index].workingDays +
+    tableData.value[index].allowance +
+    tableData.value[index].pre +
+    tableData.value[index].lengthOfService +
+    tableData.value[index].daysWorkOvertime +
+    tableData.value[index].piece
+  )
 }
 </script>
 <style scoped lang="less">
